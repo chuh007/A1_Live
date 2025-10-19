@@ -33,4 +33,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<class USkeletalMeshComponent> Mesh;
 
+	UPROPERTY(VisibleAnywhere, BluePrintReadOnly)
+	TObjectPtr<class USpringArmComponent> SpringArm;
+
+	UPROPERTY(VisibleAnywhere, BluePrintReadOnly)
+	TObjectPtr<class UCameraComponent> Camera;
+
 };
