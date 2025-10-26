@@ -12,20 +12,17 @@ AA1Actor::AA1Actor()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-
 	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
 	SetRootComponent(BodyMesh);
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMeshAsset(
-		TEXT("/Script/Engine.StaticMesh'/Game/StarterContent/Shapes/Shape_Cube.Shape_Cube'"));
-
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMeshAsset(TEXT("/Script/Engine.StaticMesh'/Game/StarterContent/Shapes/Shape_Cube.Shape_Cube'"));
 	if (BodyMeshAsset.Succeeded())
 	{
 		BodyMesh->SetStaticMesh(BodyMeshAsset.Object);
 	}
 
 	WingMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WingMesh"));
-	WingMesh->SetupAttachment(GetRootComponent());
+	WingMesh->SetupAttachment(BodyMesh);
 	WingMesh->SetRelativeScale3D(FVector(0.5f, 5.0f, 0.2f));
 	WingMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f));
 
@@ -56,15 +53,17 @@ void AA1Actor::Tick(float DeltaTime)
 	//FVector Location = GetActorLocation();
 	//FVector NewLocation = Location + FVector::ForwardVector * MovementSpeed * DeltaTime;
 	//SetActorLocation(NewLocation);
-	
+
 	//AddActorWorldOffset(FVector::ForwardVector * MovementSpeed * DeltaTime);
 
-	if (TargetActor != nullptr)
+	if (TargetActor)
 	{
 		FVector Direction = TargetActor->GetActorLocation() - GetActorLocation();
+
 		AddActorWorldOffset(Direction.GetSafeNormal() * MovementSpeed * DeltaTime);
 	}
 
+	// È¸Àü
 	//FRotator Rotation = GetActorRotation();
 	//FRotator NewRotation = FRotator(Rotation.Pitch, Rotation.Yaw * RotationRate * DeltaTime, Rotation.Roll);
 	//SetActorRotation(NewRotation);

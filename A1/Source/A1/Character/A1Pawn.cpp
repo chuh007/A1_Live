@@ -10,7 +10,6 @@
 // Sets default values
 AA1Pawn::AA1Pawn()
 {
- 	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	Capsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Capsule"));
@@ -27,7 +26,7 @@ AA1Pawn::AA1Pawn()
 	if (MeshAsset.Succeeded())
 	{
 		Mesh->SetSkeletalMesh(MeshAsset.Object);
-	}
+	}	
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(GetRootComponent());

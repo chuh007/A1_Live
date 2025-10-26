@@ -8,6 +8,7 @@
 #include "InputMappingContext.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Animation/A1AnimInstance.h"
 
 // Sets default values
 AA1Character::AA1Character()
@@ -28,15 +29,22 @@ AA1Character::AA1Character()
 void AA1Character::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	// IMC 등록 -> 중간에도 수정 가능
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
 	if (PlayerController)
 	{
-		UEnhancedInputLocalPlayerSubsystem* SubSystem =
-			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer());
-		if (SubSystem)
+		UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer());
+		if (Subsystem)
 		{
-			SubSystem->AddMappingContext(IMCShoulder, 0);
+			Subsystem->AddMappingContext(IMCShoulder, 0);
 		}
+	}
+
+	A1AnimInstance = Cast<UA1AnimInstance>(GetMesh()->GetAnimInstance());
+	if (A1AnimInstance)
+	{
+		A1AnimInstance->OnMontageEnded.AddDynamic(this, &AA1Character::OnAttackMontageEnded);
 	}
 }
 
@@ -52,28 +60,35 @@ void AA1Character::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>
-		(PlayerInputComponent);
+	UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent);
 
 	if (EnhancedInputComponent)
 	{
-		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, 
-			this, &AA1Character::Input_Attack);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started,
-			this, &AA1Character::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed,
-			this, &AA1Character::StopJumping);
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered,
-			this, &AA1Character::Input_Look);
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered,
-			this, &AA1Character::Input_Move);
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AA1Character::Input_Attack);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AA1Character::Input_Look);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AA1Character::Input_Move);
 	}
+}
 
+void AA1Character::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	bIsAttacking = false;
 }
 
 void AA1Character::Input_Attack(const FInputActionValue& InputValue)
 {
 	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Blue, TEXT("Attack"));
+
+	if (bIsAttacking)
+		return;
+
+	bIsAttacking = true;
+	if (A1AnimInstance)
+	{
+		A1AnimInstance->PlayAttackMontage();
+	}
 }
 
 void AA1Character::Input_Look(const FInputActionValue& InputValue)
@@ -85,14 +100,14 @@ void AA1Character::Input_Look(const FInputActionValue& InputValue)
 void AA1Character::Input_Move(const FInputActionValue& InputValue)
 {
 	FVector2D MovementVector = InputValue.Get<FVector2D>();
-
+	
 	const FRotator Rotation = Controller->GetControlRotation();
 	const FRotator YawRotation(0.0f, Rotation.Yaw, 0.0f);
 
-	const FVector ForwordDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-	const FVector RightDirectuon = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-	AddMovementInput(ForwordDirection, MovementVector.X);
-	AddMovementInput(RightDirectuon, MovementVector.Y);
+	AddMovementInput(ForwardDirection, MovementVector.X);
+	AddMovementInput(RightDirection, MovementVector.Y);
 }
 

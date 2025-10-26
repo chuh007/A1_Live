@@ -30,11 +30,22 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+public:
+	UFUNCTION()
+	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
 protected:
-	UPROPERTY(VisibleAnywhere, BluePrintReadOnly)
+	UPROPERTY()
+	TObjectPtr<class UA1AnimInstance> A1AnimInstance;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Attack)
+	uint8 bIsAttacking = false;
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<class USpringArmComponent> SpringArm;
 
-	UPROPERTY(VisibleAnywhere, BluePrintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<class UCameraComponent> Camera;
 
 #pragma region EnhancedInputSystem
@@ -42,6 +53,7 @@ public:
 	void Input_Attack(const FInputActionValue& InputValue);
 	void Input_Look(const FInputActionValue& InputValue);
 	void Input_Move(const FInputActionValue& InputValue);
+
 protected:
 	UPROPERTY(EditAnywhere, Category = Input)
 	TObjectPtr<UInputMappingContext> IMCShoulder;
@@ -57,8 +69,5 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = Input)
 	TObjectPtr<UInputAction> MoveAction;
-
 #pragma endregion
-
-
 };
