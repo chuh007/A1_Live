@@ -2,6 +2,7 @@
 
 
 #include "Character/A1Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "InputActionValue.h"
@@ -45,6 +46,7 @@ void AA1Character::BeginPlay()
 	if (A1AnimInstance)
 	{
 		A1AnimInstance->OnMontageEnded.AddDynamic(this, &AA1Character::OnAttackMontageEnded);
+		A1AnimInstance->OnMontageEnded.AddDynamic(this, &AA1Character::OnSkillMontageEnded);
 	}
 }
 
@@ -69,12 +71,90 @@ void AA1Character::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AA1Character::Input_Look);
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AA1Character::Input_Move);
+		EnhancedInputComponent->BindAction(SkillAction, ETriggerEvent::Triggered, this, &AA1Character::Input_Skill);
 	}
+}
+
+void AA1Character::AttackHitCheck(float AttackRange, float AttackRadius)
+{
+	FHitResult OutHitResult;
+	FVector Start = GetActorLocation();
+	FVector End = Start + GetActorForwardVector() * AttackRange;
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+
+	bool IsHit = GetWorld()->SweepSingleByChannel(OutHitResult, Start, End, FQuat::Identity,
+		ECollisionChannel::ECC_GameTraceChannel2, FCollisionShape::MakeSphere(AttackRadius), CollisionParams);
+	if (IsHit)
+	{
+		if (OutHitResult.GetActor())
+		{
+			OutHitResult.GetActor()->Destroy();
+		}
+	}
+
+#if ENABLE_DRAW_DEBUG
+	FVector CapsuleCenter = Start + (End - Start) * 0.5f;
+	float CapsuleHalfHeight = 100.0f;
+	FColor DrawColor = IsHit ? FColor::Green : FColor::Red;
+
+	DrawDebugCapsule(GetWorld(), CapsuleCenter, CapsuleHalfHeight, AttackRadius,
+		FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(), DrawColor, false, 5.0f);
+#endif
+
+}
+
+void AA1Character::SkillHitCheck(float SkillRange)
+{
+	TArray<FHitResult> OutHitResults;
+	FVector Origin = GetActorLocation();
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+
+	bool bHitResult = GetWorld()->SweepMultiByChannel(OutHitResults,
+		Origin, Origin, FQuat::Identity, ECollisionChannel::ECC_GameTraceChannel2,
+		FCollisionShape::MakeSphere(SkillRange), CollisionParams);
+
+	if (bHitResult)
+	{
+		for (auto& OutHitResult : OutHitResults)
+		{
+			OutHitResult.GetActor()->Destroy();
+		}
+	}
+#if ENABLE_DRAW_DEBUG
+	FColor DrawColor = bHitResult ? FColor::Green : FColor::Red;
+	DrawDebugSphere(GetWorld(), Origin, SkillRange, 16, DrawColor, false, 5.0f);
+#endif
 }
 
 void AA1Character::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	bIsAttacking = false;
+	if (Montage && Montage->GetFName() == TEXT("AM_Attack"))
+	{
+		bIsAttacking = false;
+	}
+}
+
+void AA1Character::OnSkillMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage && Montage->GetFName() == TEXT("AM_Skill"))
+	{
+		GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+
+		GetWorld()->GetTimerManager().SetTimer(
+			SkillCoolTimeHandle,
+			FTimerDelegate::CreateLambda(
+				[&]()
+				{
+					bUseSkill = true;
+					GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, TEXT("Use Skill!"));
+				}
+			),
+			SkillCoolTime,
+			false
+		);
+	}
 }
 
 void AA1Character::Input_Attack(const FInputActionValue& InputValue)
@@ -90,6 +170,7 @@ void AA1Character::Input_Attack(const FInputActionValue& InputValue)
 		A1AnimInstance->PlayAttackMontage();
 	}
 }
+
 
 void AA1Character::Input_Look(const FInputActionValue& InputValue)
 {
@@ -109,5 +190,20 @@ void AA1Character::Input_Move(const FInputActionValue& InputValue)
 
 	AddMovementInput(ForwardDirection, MovementVector.X);
 	AddMovementInput(RightDirection, MovementVector.Y);
+}
+
+void AA1Character::Input_Skill(const FInputActionValue& InputValue)
+{
+	if (bUseSkill == false)
+		return;
+
+	bUseSkill = false;
+
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+
+	if (A1AnimInstance)
+	{
+		A1AnimInstance->PlaySkillMontage();
+	}
 }
 
